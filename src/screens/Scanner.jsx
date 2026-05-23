@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { store, fileToBase64, ASSET_CATEGORIES, UTILITY_TYPES } from "../store/index.js";
-import { Input, Btn, Spinner } from "../components/ui.jsx";
+import { Input, Btn, Spinner } from "../components/ui.jsx";https://github.com/MartinPelcl/homeOS/blob/main/src/screens/Scanner.jsx
 
 async function extractData(file, mode) {
   const base64 = await fileToBase64(file);
