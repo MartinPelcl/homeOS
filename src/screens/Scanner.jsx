@@ -14,7 +14,7 @@ async function extractData(file, mode) {
   const utilPrompt = `Analiziraj ta račun za komunalne storitve. Vrni IZKLJUČNO veljaven JSON brez markdown ali besedila:
 {"utility_type":"elektrika|plin|voda|internet|odpadki|ostalo","provider":"ime ponudnika","amount":"število ali null","billing_period_start":"YYYY-MM-DD ali null","billing_period_end":"YYYY-MM-DD ali null","due_date":"YYYY-MM-DD ali null","consumption":"npr 234 kWh ali null","contract_expires":"YYYY-MM-DD ali null","account_number":"null ali string","notes":"null ali string","confidence":"high|medium|low"}`;
 
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+  const resp = await fetch("/api/extract", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -78,7 +78,6 @@ export default function ScannerScreen({ onSaved }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Mode toggle */}
       <div style={{ display: "flex", background: "#0d0d0c", borderRadius: 8, padding: 3, border: "1px solid #1e1e1c", width: "fit-content" }}>
         {[["asset","🔧 Naprava"],["utility","💡 Utility"]].map(([m,l]) => (
           <button key={m} onClick={() => { setMode(m); reset(); }} style={{
@@ -91,7 +90,6 @@ export default function ScannerScreen({ onSaved }) {
         ))}
       </div>
 
-      {/* Upload */}
       {phase === "upload" && (
         <div
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -117,7 +115,6 @@ export default function ScannerScreen({ onSaved }) {
         </div>
       )}
 
-      {/* Scanning */}
       {phase === "scanning" && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "40px 0" }}>
           {preview && <img src={preview} alt="" style={{ maxHeight: 150, borderRadius: 8, border: "1px solid #252525", opacity: 0.5, filter: "grayscale(30%)" }} />}
@@ -131,7 +128,6 @@ export default function ScannerScreen({ onSaved }) {
         </div>
       )}
 
-      {/* Confirm */}
       {phase === "confirm" && extracted && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -175,7 +171,6 @@ export default function ScannerScreen({ onSaved }) {
         </div>
       )}
 
-      {/* Saved */}
       {phase === "saved" && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, padding: "40px 0", textAlign: "center" }}>
           <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#1a2e1a", border: "1px solid #2D5A27", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>✓</div>
