@@ -181,24 +181,42 @@ export default function AssetDetail({ asset, onBack, onRefresh }) {
 
       {/* Info tab */}
       {tab === "info" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[
-            ["Ime", asset.name],
-            ["Znamka", asset.brand],
-            ["Model", asset.model],
-            ["Kategorija", asset.category],
-            ["Datum nakupa", asset.purchase_date],
-            ["Cena", asset.price ? asset.price + " €" : null],
-            ["Dobavitelj", asset.supplier],
-            ["Garancija (leta)", asset.warranty_years],
-            ["Garancija poteče", asset.warranty_expires],
-            ["Opomba", asset.notes],
-          ].filter(([, v]) => v).map(([label, value]) => (
-            <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1a1a18" }}>
-              <span style={{ fontSize: 12, color: "#666" }}>{label}</span>
-              <span style={{ fontSize: 13, color: "#e8e4dc" }}>{value}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              ["Ime", asset.name],
+              ["Znamka", asset.brand],
+              ["Model", asset.model],
+              ["Kategorija", asset.category],
+              ["Datum nakupa", asset.purchase_date],
+              ["Cena", asset.price ? asset.price + " €" : null],
+              ["Dobavitelj", asset.supplier],
+              ["Garancija (leta)", asset.warranty_years],
+              ["Garancija poteče", asset.warranty_expires],
+              ["Opomba", asset.notes],
+            ].filter(([, v]) => v).map(([label, value]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1a1a18" }}>
+                <span style={{ fontSize: 12, color: "#666" }}>{label}</span>
+                <span style={{ fontSize: 13, color: "#e8e4dc" }}>{value}</span>
+              </div>
+            ))}
+          </div>
+
+          {asset.specs && Object.keys(asset.specs).length > 0 && (
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: 2, color: "#666", textTransform: "uppercase", marginBottom: 10, marginTop: 8 }}>
+                Specifikacije
+              </div>
+              <div style={{ background: "#111", border: "1px solid #1e1e1c", borderRadius: 8, padding: "8px 14px" }}>
+                {Object.entries(asset.specs).map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid #1a1a18" }}>
+                    <span style={{ fontSize: 12, color: "#a09880" }}>{k}</span>
+                    <span style={{ fontSize: 13, color: "#e8e4dc" }}>{v}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
