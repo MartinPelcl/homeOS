@@ -2,27 +2,36 @@ import { useState, useRef, useCallback } from "react";
 import { store, fileToBase64, ASSET_CATEGORIES, UTILITY_TYPES } from "../store/index.js";
 import { Input, Btn, Spinner } from "../components/ui.jsx";
 
-async function extractData(file, mode) {
+async function extractData(file, mode, hint) {
   const base64 = await fileToBase64(file);
   const contentBlock = file.type === "application/pdf"
     ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
     : { type: "image",    source: { type: "base64", media_type: file.type, data: base64 } };
 
+  const hintLine = hint ? `\n\nUporabnik je povedal: "${hint}". Uporabi to kot kontekst — ne ugibaj kaj je naprava, ampak verjemi userju.\n` : "";
+
   const prompts = {
-    receipt: `Analiziraj račun za nakup naprave ali opreme. Vrni IZKLJUČNO veljaven JSON brez markdown ali besedila:
+    receipt: `Analiziraj račun za nakup naprave ali opreme.${hintLine} Vrni IZKLJUČNO veljaven JSON brez markdown ali besedila:
 {"name":"kratko ime naprave (npr. Pralni stroj, Pe\u010dica)","brand":"znamka ali null","model":"model ali null","category":"ena od: Ogrevanje & Hlajenje|Kuhinja|Kopalnica|Streha & Fasada|Vrt & Zunanjost|Varnost|Elektrika|Vodovodna napeljava|Ostalo","purchase_date":"YYYY-MM-DD ali null","price":"\u0161tevilo ali null","supplier":"prodajalec ali null","warranty_years":"\u0161tevilo ali null","warranty_expires":"YYYY-MM-DD ali null","specs":{},"notes":"kratka opomba ali null","confidence":"high|medium|low"}`,
 
-    plate: `Analiziraj tehni\u010dno tablico (etiketo) naprave. Tukaj so podatki o napravi (model, serijska \u0161tevilka, napajanje, mo\u010d, itd.).
+    plate: `Analiziraj tehni\u010dno tablico (etiketo) naprave. Tukaj so podatki o napravi (model, serijska \u0161tevilka, napajanje, mo\u010d, itd.).${hintLine}
 Vrni IZKLJUČNO veljaven JSON brez markdown ali besedila:
 {"name":"kratko ime naprave (npr. Klimatska naprava, Pe\u010dica, Toplotna \u010drpalka)","brand":"znamka","model":"model ali artikel \u0161t.","category":"ena od: Ogrevanje & Hlajenje|Kuhinja|Kopalnica|Streha & Fasada|Vrt & Zunanjost|Varnost|Elektrika|Vodovodna napeljava|Ostalo","specs":{"Serijska \u0161tevilka":"vrednost","Leto izdelave":"vrednost","Napetost":"vrednost","Mo\u010d":"vrednost"},"notes":"npr. Made in...","confidence":"high|medium|low"}
 
-V "specs" objekt VKLJU\u010cI VSA polja ki jih vidi\u0161 na tablici (serijska, leto, napetost, mo\u010d, frekvenca, hladivo/refrigerant, te\u017ca, IP koda, kapaciteta, energetski razred, itd.). Klju\u010di naj bodo v sloven\u0161\u010dini, vrednosti to\u010dno kot na tablici. Ne izpu\u0161\u010daj relevantnih podatkov.`,
+V "specs" objekt VKLJU\u010cI VSA polja ki jih vidi\u0161 na tablici (serijska, leto, napetost, mo\u010d, frekvenca, hladivo/refrigerant, te\u017ca, IP koda, kapaciteta, energetski razred, itd.). Klju\u010di naj bodo v sloven\u0161\u010dini, vrednosti to\u010dno kot na tablici. Ne izpu\u0161\u010daj relevantnih podatkov.
 
-    photo: `Analiziraj fotografijo naprave ali opreme (brez tablice). Prepoznaj kaj je naprava in znamko \u010de je vidna.
+POMEMBNO za LETO IZDELAVE: leto je lahko v razli\u010dnih formatih:
+- Eksplicitno: "Year of manufacture", "YOM", "Leto izdelave", "2020. 04"
+- V datumu proizvodnje: "04/2020", "2020-04"
+- V serijski \u0161tevilki: npr. "92430119" lahko vsebuje leto (944 = teden 44, 2019)
+- Na "Date code" ali "Mfg date" oznaki
+\u010ce najde\u0161 KAKR\u0160NOKOLI omembo leta ali datuma proizvodnje, ga vklju\u010di v "Leto izdelave" kot 4-mestno \u0161tevilo (2020). \u010ce res ni nikjer, pusti null - NE UGIBAJ.`,
+
+    photo: `Analiziraj fotografijo naprave ali opreme (brez tablice). Prepoznaj kaj je naprava in znamko \u010de je vidna.${hintLine}
 Vrni IZKLJUČNO veljaven JSON brez markdown ali besedila:
 {"name":"kratko ime naprave (npr. Indukcijska plo\u0161\u010da, Hladilnik, Klima)","brand":"znamka \u010de jo vidi\u0161 ali null","model":"null","category":"ena od: Ogrevanje & Hlajenje|Kuhinja|Kopalnica|Streha & Fasada|Vrt & Zunanjost|Varnost|Elektrika|Vodovodna napeljava|Ostalo","specs":{},"notes":"opi\u0161i kar vidi\u0161 (barvo, tip, posebnosti)","confidence":"high|medium|low"}`,
 
-    utility: `Analiziraj ra\u010dun za komunalne storitve. Vrni IZKLJUČNO veljaven JSON brez markdown ali besedila:
+    utility: `Analiziraj ra\u010dun za komunalne storitve.${hintLine} Vrni IZKLJUČNO veljaven JSON brez markdown ali besedila:
 {"utility_type":"elektrika|plin|voda|internet|odpadki|ostalo","provider":"ime ponudnika","amount":"\u0161tevilo ali null","billing_period_start":"YYYY-MM-DD ali null","billing_period_end":"YYYY-MM-DD ali null","due_date":"YYYY-MM-DD ali null","consumption":"npr 234 kWh ali null","contract_expires":"YYYY-MM-DD ali null","account_number":"null ali string","notes":"null ali string","confidence":"high|medium|low"}`,
   };
 
@@ -125,6 +134,7 @@ export default function ScannerScreen({ onSaved }) {
   const [extracted, setExtracted] = useState(null);
   const [error, setError]         = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
+  const [hint, setHint]           = useState("");
   const cameraRef  = useRef();
   const galleryRef = useRef();
 
@@ -139,13 +149,13 @@ export default function ScannerScreen({ onSaved }) {
     setPreview(f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
     setPhase("scanning");
     try {
-      setExtracted(await extractData(f, mode));
+      setExtracted(await extractData(f, mode, hint));
       setPhase("confirm");
     } catch (e) {
       setError("Ekstrakcija ni uspela: " + e.message);
       setPhase("upload");
     }
-  }, [mode]);
+  }, [mode, hint]);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault(); setDragOver(false);
@@ -161,7 +171,7 @@ export default function ScannerScreen({ onSaved }) {
     setPhase("saved");
   };
 
-  const reset = () => { setPhase("upload"); setPreview(null); setExtracted(null); setError(null); };
+  const reset = () => { setPhase("upload"); setPreview(null); setExtracted(null); setError(null); setHint(""); };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -192,15 +202,32 @@ export default function ScannerScreen({ onSaved }) {
             onDrop={handleDrop}
             style={{
               border: `2px dashed ${dragOver ? "#8B7355" : "#252525"}`,
-              borderRadius: 16, padding: "32px 20px", textAlign: "center",
+              borderRadius: 16, padding: "28px 20px", textAlign: "center",
               background: dragOver ? "#0f0d08" : "transparent",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 18,
               transition: "all 0.2s",
             }}
           >
-            <div style={{ fontSize: 13, color: "#666", fontStyle: "italic" }}>
-              Kako želiš dodati?
-            </div>
+            {isAsset && (
+              <div style={{ width: "100%", maxWidth: 380 }}>
+                <label style={{ fontSize: 10, letterSpacing: 2, color: "#666", textTransform: "uppercase", display: "block", marginBottom: 6, textAlign: "left" }}>
+                  Kaj slikaš? <span style={{ color: "#444", textTransform: "none", letterSpacing: 0 }}>(opcijsko, pomaga AI-ju)</span>
+                </label>
+                <input
+                  value={hint}
+                  onChange={e => setHint(e.target.value)}
+                  placeholder="npr. klima v dnevni, pečica, žaluzija..."
+                  style={{
+                    background: "#111", border: "1px solid #252525", borderRadius: 8,
+                    color: "#e8e4dc", padding: "10px 14px", fontSize: 14,
+                    fontFamily: "inherit", width: "100%", outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                  onFocus={e => e.target.style.borderColor = "#8B7355"}
+                  onBlur={e => e.target.style.borderColor = "#252525"}
+                />
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 12, width: "100%", maxWidth: 380 }}>
               <button onClick={() => cameraRef.current.click()} style={{
@@ -296,6 +323,53 @@ export default function ScannerScreen({ onSaved }) {
                 specs={extracted.specs || {}}
                 onChange={s => setExtracted({ ...extracted, specs: s })}
               />
+
+              {(() => {
+                const hasYear =
+                  extracted.purchase_date ||
+                  Object.entries(extracted.specs || {}).some(([k, v]) =>
+                    /leto|year|izdelav|manuf/i.test(k) && v && String(v).match(/\d{4}/)
+                  );
+                if (hasYear) return null;
+                return (
+                  <div style={{
+                    background: "#1a1408", border: "1px solid #c8954a55",
+                    borderRadius: 8, padding: "12px 14px",
+                    display: "flex", flexDirection: "column", gap: 10,
+                  }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <span style={{ color: "#c8954a", fontSize: 14 }}>⚠</span>
+                      <div style={{ fontSize: 12, color: "#c8b090", lineHeight: 1.5 }}>
+                        <strong>Leto izdelave / nakupa manjka.</strong><br />
+                        Brez tega ne moremo planirati servisov in opomnikov.
+                      </div>
+                    </div>
+                    <input
+                      type="number"
+                      placeholder="npr. 2020"
+                      min="1950" max="2030"
+                      onChange={e => {
+                        const year = e.target.value;
+                        if (year && year.length === 4) {
+                          setExtracted({
+                            ...extracted,
+                            specs: { ...(extracted.specs || {}), "Leto izdelave": year },
+                          });
+                        }
+                      }}
+                      style={{
+                        background: "#0d0d0c", border: "1px solid #c8954a55",
+                        borderRadius: 6, color: "#e8e4dc",
+                        padding: "9px 12px", fontSize: 14,
+                        fontFamily: "inherit", outline: "none", width: "100%",
+                        boxSizing: "border-box",
+                      }}
+                      onFocus={e => e.target.style.borderColor = "#c8954a"}
+                      onBlur={e => e.target.style.borderColor = "#c8954a55"}
+                    />
+                  </div>
+                );
+              })()}
 
               {extracted.notes && (
                 <Input label="Opomba" value={extracted.notes} onChange={v => setExtracted({ ...extracted, notes: v })} />
