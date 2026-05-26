@@ -125,7 +125,8 @@ export default function ScannerScreen({ onSaved }) {
   const [extracted, setExtracted] = useState(null);
   const [error, setError]         = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
-  const fileRef = useRef();
+  const cameraRef  = useRef();
+  const galleryRef = useRef();
 
   const isUtility = mode === "utility";
   const isAsset   = !isUtility;
@@ -184,28 +185,62 @@ export default function ScannerScreen({ onSaved }) {
       </div>
 
       {phase === "upload" && (
-        <div
-          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileRef.current.click()}
-          style={{
-            border: `2px dashed ${dragOver ? "#8B7355" : "#252525"}`,
-            borderRadius: 16, padding: "52px 28px", textAlign: "center",
-            cursor: "pointer", background: dragOver ? "#0f0d08" : "transparent",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
-            transition: "all 0.2s",
-          }}
-        >
-          <div style={{ fontSize: 36, opacity: 0.2 }}>⬆</div>
-          <div>
-            <div style={{ fontSize: 16, fontStyle: "italic", marginBottom: 6 }}>
-              Naloži ali slikaj
+        <>
+          <div
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            style={{
+              border: `2px dashed ${dragOver ? "#8B7355" : "#252525"}`,
+              borderRadius: 16, padding: "32px 20px", textAlign: "center",
+              background: dragOver ? "#0f0d08" : "transparent",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
+              transition: "all 0.2s",
+            }}
+          >
+            <div style={{ fontSize: 13, color: "#666", fontStyle: "italic" }}>
+              Kako želiš dodati?
             </div>
-            <div style={{ fontSize: 12, color: "#666", lineHeight: 1.8 }}>JPG · PNG · PDF</div>
+
+            <div style={{ display: "flex", gap: 12, width: "100%", maxWidth: 380 }}>
+              <button onClick={() => cameraRef.current.click()} style={{
+                flex: 1, background: "#1a1a18", border: "1px solid #8B7355",
+                borderRadius: 12, padding: "20px 12px", cursor: "pointer",
+                color: "#e8e4dc", fontFamily: "inherit",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "#22221e"}
+              onMouseLeave={e => e.currentTarget.style.background = "#1a1a18"}
+              >
+                <span style={{ fontSize: 28 }}>📷</span>
+                <span style={{ fontSize: 13, fontStyle: "italic" }}>Skeniraj</span>
+                <span style={{ fontSize: 10, color: "#666" }}>S kamero</span>
+              </button>
+
+              <button onClick={() => galleryRef.current.click()} style={{
+                flex: 1, background: "#1a1a18", border: "1px solid #333",
+                borderRadius: 12, padding: "20px 12px", cursor: "pointer",
+                color: "#e8e4dc", fontFamily: "inherit",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "#22221e"}
+              onMouseLeave={e => e.currentTarget.style.background = "#1a1a18"}
+              >
+                <span style={{ fontSize: 28 }}>🖼️</span>
+                <span style={{ fontSize: 13, fontStyle: "italic" }}>Naloži</span>
+                <span style={{ fontSize: 10, color: "#666" }}>Iz galerije / PDF</span>
+              </button>
+            </div>
+
+            <div style={{ fontSize: 10, color: "#444" }}>
+              ali povleci datoteko sem
+            </div>
+
+            {error && <div style={{ color: "#c85a5a", fontSize: 13 }}>{error}</div>}
           </div>
-          {error && <div style={{ color: "#c85a5a", fontSize: 13 }}>{error}</div>}
-        </div>
+        </>
       )}
 
       {phase === "scanning" && (
@@ -292,7 +327,8 @@ export default function ScannerScreen({ onSaved }) {
         </div>
       )}
 
-      <input ref={fileRef} type="file" accept="image/*,.pdf" capture="environment" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
+      <input ref={cameraRef}  type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
+      <input ref={galleryRef} type="file" accept="image/*,.pdf"                  style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
     </div>
   );
 }
